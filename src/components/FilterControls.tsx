@@ -11,6 +11,7 @@ interface FilterControlsProps {
   setActiveRarity: (rarity: string) => void;
   cards: PokemonCard[];
   onResetCollection: () => void;
+  onSetAllDiamondOwned: () => void;
 }
 
 const FilterControls: React.FC<FilterControlsProps> = ({
@@ -21,7 +22,8 @@ const FilterControls: React.FC<FilterControlsProps> = ({
   activeRarity,
   setActiveRarity,
   cards,
-  onResetCollection
+  onResetCollection,
+  onSetAllDiamondOwned,
 }) => {
   // Get unique sets for filters
   const sets = ['all', ...Array.from(new Set(cards.map(card => card.set)))];
@@ -78,6 +80,14 @@ const FilterControls: React.FC<FilterControlsProps> = ({
           className="btn btn-danger"
         >
           Reset Collection
+        </button>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={onSetAllDiamondOwned}
+          className="btn btn-danger"
+        >
+          Set All Diamond Cards to Owned
         </button>
       </div>
     </div>

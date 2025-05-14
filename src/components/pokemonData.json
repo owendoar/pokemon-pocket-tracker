@@ -21,7 +21,7 @@
     "pokemonWithRarities": [
       {"name": "Exeggcute", "rarity": "oneDiamond", "set": "LUNA", "owned": true},
       {"name": "Alolan Exeggutor", "rarity": "threeDiamond", "set": "LUNA", "owned": false},
-      {"name": "Surskit", "rarity": "oneDiamond", "set": "SELS", "owned": true},
+      {"name": "Surskit", "rarity": "oneDiamond", "set": "CELS", "owned": true},
       {"name": "Masquerain", "rarity": "twoDiamond", "set": "CELS", "owned": true}, 
       {"name": "Maractus", "rarity": "oneDiamond", "set": "LUNA", "owned": true},
       {"name": "Karrablast", "rarity": "oneDiamond", "set": "CELS", "owned": true},

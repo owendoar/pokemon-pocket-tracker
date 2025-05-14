@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { PokemonCard, CELESTIAL_SET } from './cardData';
+import { PokemonCard, CELESTIAL_SET, RARITIES } from './cardData';
 import { calculateStats } from './cardStats';
 import { firebaseService } from './firebaseService';
 import CollectionStatsComponent from './CollectionStats';
@@ -141,6 +141,26 @@ export default function PokemonCardTracker(): JSX.Element {
       await saveToFirebase(resetCards);
     }
   };
+
+  const setAllDiamondOwned = async (): Promise<void> => {
+    const thresholdIndex = RARITIES.findIndex(r => r.name === "fourDiamond");
+    if (window.confirm('Are you sure you want to mark diamond cards as owned?')) {
+      const setAllCards = cards.map(card => {
+        const cardRarityIndex = RARITIES.findIndex(r => r.name === card.rarity);
+        return {
+          ...card,
+          owned: cardRarityIndex <= thresholdIndex
+        };
+      });
+
+      setCards(setAllCards);
+      const setStats = calculateStats({...CELESTIAL_SET, cards: setAllCards});
+      setCollectionStats(setStats);
+      
+      // Save to Firebase
+      await saveToFirebase(setAllCards);
+    }
+  }
   
   // Add cards from pack to collection
   const addCardsToCollection = async (packCards: PokemonCard[]): Promise<void> => {
@@ -258,6 +278,7 @@ export default function PokemonCardTracker(): JSX.Element {
         setActiveRarity={setActiveRarity}
         cards={cards}
         onResetCollection={resetCollection}
+        onSetAllDiamondOwned={setAllDiamondOwned}
       />
       
       {/* Card Collection */}
