@@ -61,7 +61,7 @@ const generateCardSet = (setInfo: typeof pokemonData.sets[0]): PokemonCard[] => 
   pokemonWithRarities.forEach((pokemon, index) => {
     if (cards.length < totalCards) {
       cards.push({
-        id: `${setInfo.prefix}${(index + 1).toString().padStart(3, '0')}`,
+        id: `${setInfo.code}${(index + 1).toString().padStart(3, '0')}`,
         name: pokemon.name,
         set: setInfo.name,
         subset: pokemon.set,

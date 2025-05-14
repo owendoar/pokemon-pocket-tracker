@@ -14,7 +14,7 @@
     "sets": [
       {
         "name": "Celestial",
-        "prefix": "CELS",
+        "code": "a3",
         "totalCards": 239
       }
     ],

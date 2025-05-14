@@ -3,7 +3,7 @@ import { PokemonCard, CardSetStats, RARITIES, PokemonCardSet } from './cardData'
 import { calculateNewCardOdds } from './packSimulator';
 
 // Calculate collection statistics
-export const calculateStats = (cardSet: PokemonCardSet, subSet: String): CardSetStats => {
+export const calculateStats = (cardSet: PokemonCardSet): CardSetStats => {
   const cardArray = cardSet.cards ? cardSet.cards : [];
   const total = cardArray.length;
   const collected = cardArray.filter(card => card.owned).length;
