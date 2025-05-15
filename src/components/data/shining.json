@@ -1,0 +1,44 @@
+{
+  "name" : "Shining Revelry",
+  "tag" : "A2b",
+  "totalCards": 1,
+  "rarities": [
+    {"name": "oneDiamond", "color": "bg-gray-200"},
+    {"name": "twoDiamond", "color": "bg-green-200"},
+    {"name": "threeDiamond", "color": "bg-blue-200"},
+    {"name": "fourDiamond", "color": "bg-blue-300"},
+    {"name": "oneStar", "color": "bg-purple-200"},
+    {"name": "twoStar", "color": "bg-purple-300"},
+    {"name": "threeStar", "color": "bg-pink-200"},
+    {"name": "oneRainbow", "color": "bg-indigo-200"},
+    {"name": "twoRainbow", "color": "bg-yellow-200"},
+    {"name": "crown", "color": "bg-yellow-400"}
+  ],
+  "packOdds": {
+    "slotFourOdds": {
+      "twoDiamond": 0.89,
+      "threeDiamond": 0.04952,
+      "fourDiamond": 0.01666,
+      "oneStar": 0.02572,
+      "twoStar": 0.005,
+      "threeStar": 0.00222,
+      "oneRainbow": 0.00714,
+      "twoRainbow": 0.00333,
+      "crown": 0.0004
+    },
+    "slotFiveOdds": {
+      "twoDiamond": 0.56,
+      "threeDiamond": 0.19810,
+      "fourDiamond": 0.06664,
+      "oneStar": 0.10288,
+      "twoStar": 0.02,
+      "threeStar": 0.00888,
+      "oneRainbow": 0.02857,
+      "twoRainbow": 0.01333,
+      "crown": 0.0016
+    }
+  },
+  "subsets": [],
+  "cards": [
+    {"name": "Riolu", "rarity": "oneDiamond", "subset": "Shining Revelry"}]
+}

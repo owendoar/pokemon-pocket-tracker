@@ -1,5 +1,5 @@
 // Pack Simulator Logic
-import { PokemonCard, PokemonCardSet, RARITIES, packOdds } from './cardData';
+import { PokemonCard, PokemonCardSet } from './cardData';
 
 export interface PackSimulationResult {
   cards: PokemonCard[];
@@ -17,7 +17,7 @@ export const calculateNewCardOdds = (cardSet: PokemonCardSet, subSet: String): n
 
   const cardsByRarity: { [key: string]: { owned: number, total: number } } = {};
   
-  RARITIES.forEach(rarity => {
+  cardSet.rarities.forEach(rarity => {
     cardsByRarity[rarity.name] = {
       owned: 0,
       total: 0
@@ -83,12 +83,13 @@ export const weightedRandomIndex = (weights: number[]): number => {
 };
 
 // Simulate opening a pack
-export const simulatePackOpening = (cards: PokemonCard[]): PackSimulationResult => {
+export const simulatePackOpening = (cardSet: PokemonCardSet): PackSimulationResult => {
   // Pack structure: 5 cards
   // Cards 1-3: Common
   // Card 4: Usually Uncommon (80%), sometimes Rare (15%) or Rare Holo (5%)
   // Card 5: Any non-common rarity based on weights
   
+  const cards = cardSet.cards;
   const pack: PokemonCard[] = [];
   const rarityBreakdown: {[key: string]: number} = {};
   let newCardsCount = 0;
@@ -106,10 +107,10 @@ export const simulatePackOpening = (cards: PokemonCard[]): PackSimulationResult 
   }
   
   // Card 4: Usually Uncommon
-  const slot4Rarities = ["Uncommon", "Rare", "Rare Holo"];
-  const slot4Weights = [80, 15, 5];
+  const slotRarities = Object.keys(cardSet.packOdds.slotFourOdds);
+  const slot4Weights = Object.values(cardSet.packOdds.slotFourOdds);
   const slot4RarityIndex = weightedRandomIndex(slot4Weights);
-  const slot4Rarity = slot4Rarities[slot4RarityIndex];
+  const slot4Rarity = slotRarities[slot4RarityIndex];
   
   const slot4Cards = cards.filter(card => card.rarity === slot4Rarity);
   if (slot4Cards.length > 0) {
@@ -121,17 +122,16 @@ export const simulatePackOpening = (cards: PokemonCard[]): PackSimulationResult 
   }
   
   // Card 5: Rare slot (any non-common rarity)
-  const rareRarities = RARITIES.filter(r => r.name !== "Common");
-  const rareWeights = rareRarities.map(r => r.weight);
-  const rareRarityIndex = weightedRandomIndex(rareWeights);
-  const rareRarity = rareRarities[rareRarityIndex].name;
+  const slot5Weights = Object.values(cardSet.packOdds.slotFiveOdds);
+  const slot5RarityIndex = weightedRandomIndex(slot5Weights);
+  const slot5Rarity = slotRarities[slot5RarityIndex];
   
-  const rareCards = cards.filter(card => card.rarity === rareRarity);
+  const rareCards = cards.filter(card => card.rarity === slot5Rarity);
   if (rareCards.length > 0) {
     const randomCard = rareCards[Math.floor(Math.random() * rareCards.length)];
     pack.push(randomCard);
     
-    rarityBreakdown[rareRarity] = (rarityBreakdown[rareRarity] || 0) + 1;
+    rarityBreakdown[slot5Rarity] = (rarityBreakdown[slot5Rarity] || 0) + 1;
     if (!randomCard.owned) newCardsCount++;
   }
   
@@ -139,68 +139,5 @@ export const simulatePackOpening = (cards: PokemonCard[]): PackSimulationResult 
     cards: pack,
     newCards: newCardsCount,
     rarityBreakdown
-  };
-};
-
-// Simulate opening multiple packs for statistics
-export const simulateMultiplePacks = (cards: PokemonCard[], count: number): {
-  totalNewCards: number;
-  packsWithNewCards: number;
-  avgNewCardsPerPack: string;
-  successPercentage: string;
-  estimatedPacksNeeded: number | string;
-} => {
-  count = Math.max(1, Math.min(100, count));
-  let totalNewCards = 0;
-  let packsWithNewCards = 0;
-  
-  for (let i = 0; i < count; i++) {
-    // Simulate a pack opening without changing the UI
-    const pack = [];
-    let newCardsInPack = 0;
-    
-    // Cards 1-3: Commons
-    for (let j = 0; j < 3; j++) {
-      const commonCards = cards.filter(card => card.rarity === "Common");
-      if (commonCards.length === 0) continue;
-      
-      const randomCard = commonCards[Math.floor(Math.random() * commonCards.length)];
-      if (!randomCard.owned) newCardsInPack++;
-    }
-    
-    // Card 4: Usually Uncommon
-    const slot4Rarities = ["Uncommon", "Rare", "Rare Holo"];
-    const slot4Weights = [80, 15, 5];
-    const slot4RarityIndex = weightedRandomIndex(slot4Weights);
-    const slot4Rarity = slot4Rarities[slot4RarityIndex];
-    
-    const slot4Cards = cards.filter(card => card.rarity === slot4Rarity);
-    if (slot4Cards.length > 0) {
-      const randomCard = slot4Cards[Math.floor(Math.random() * slot4Cards.length)];
-      if (!randomCard.owned) newCardsInPack++;
-    }
-    
-    // Card 5: Rare slot (any non-common rarity)
-    const rareRarities = RARITIES.filter(r => r.name !== "Common");
-    const rareWeights = rareRarities.map(r => r.weight);
-    const rareRarityIndex = weightedRandomIndex(rareWeights);
-    const rareRarity = rareRarities[rareRarityIndex].name;
-    
-    const rareCards = cards.filter(card => card.rarity === rareRarity);
-    if (rareCards.length > 0) {
-      const randomCard = rareCards[Math.floor(Math.random() * rareCards.length)];
-      if (!randomCard.owned) newCardsInPack++;
-    }
-    
-    totalNewCards += newCardsInPack;
-    if (newCardsInPack > 0) packsWithNewCards++;
-  }
-  
-  return {
-    totalNewCards,
-    packsWithNewCards,
-    avgNewCardsPerPack: (totalNewCards / count).toFixed(2),
-    successPercentage: ((packsWithNewCards / count) * 100).toFixed(2),
-    estimatedPacksNeeded: packsWithNewCards > 0 ? Math.ceil(count / packsWithNewCards) : "∞"
   };
 };

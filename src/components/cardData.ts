@@ -1,15 +1,4 @@
-// Card Data Types and Database
-import pokemonData from './pokemonData.json';
-
-export interface PokemonCardSet {
-  tag: String;
-  cards: PokemonCard[];
-  packOdds: packOdds;
-  rarityCount: Record<string, number>;
-  subsets: String[];
-}
-
-// Define TypeScript interfaces
+// Card Data Types and Classes
 export interface PokemonCard {
   id: string;
   name: string;
@@ -19,118 +8,129 @@ export interface PokemonCard {
   owned: boolean;
 }
 
-export interface packOdds {
-  slotFourOdds: Record<string, number>
-  slotFiveOdds: Record<string, number>
-}
-
-export interface CardSetStats {
-  total: number;
-  collected: number;
-  missing: number;
-  collectionPercent: string;
-  newCardOddsSolg: number;
-  newCardOddsLuna: number;
-  byRarity: {
-    [key: string]: {
-      total: number;
-      collected: number;
-      percent: string;
-    }
-  }
+export interface PackOdds {
+  slotFourOdds: Record<string, number>;
+  slotFiveOdds: Record<string, number>;
 }
 
 export interface RarityDefinition {
   name: string;
   color: string;
-  weight?: number;
 }
 
-// Define card rarities with their distribution in pack slots
-export const RARITIES: RarityDefinition[] = pokemonData.rarities;
-
-// Generate card set function using the pre-assigned rarities
-const generateCardSet = (setInfo: typeof pokemonData.sets[0]): PokemonCard[] => {
-  const cards: PokemonCard[] = [];
-  const pokemonWithRarities = pokemonData.pokemonWithRarities;
+// PokemonCardSet class with methods
+export class PokemonCardSet {
+  public readonly tag: string;
+  public readonly name: string;
+  public cards: PokemonCard[];
+  public readonly packOdds: PackOdds;
+  public readonly subsets: string[];
+  public readonly rarities: RarityDefinition[];
   
-  // Determine how many cards to create
-  const totalCards = setInfo.totalCards;
-  
-  // First, create basic cards for each Pokémon with their assigned rarity
-  pokemonWithRarities.forEach((pokemon, index) => {
-    if (cards.length < totalCards) {
-      cards.push({
-        id: `${setInfo.code}${(index + 1).toString().padStart(3, '0')}`,
-        name: pokemon.name,
-        set: setInfo.name,
-        subset: pokemon.set,
-        rarity: pokemon.rarity,
-        owned: pokemon.owned
-      });
-    }
-  });
-  
-  return cards;
-};
-
-// Generate the Celestial set using the first set definition
-export const CELESTIAL_CARDS: PokemonCard[] = generateCardSet(pokemonData.sets[0]);
-
-export const SHINY_SET_ODDS: packOdds = {
-  slotFourOdds: {
-    "twoDiamond": 0.89,
-    "threeDiamond": 0.04952,
-    "fourDiamond": 0.01666,
-    "oneStar": 0.02572,
-    "twoStar": 0.005,
-    "threeStar": 0.00222,
-    "oneRainbow": 0.00714,
-    "twoRainbow": 0.00333,
-    "crown": 0.0004
-  },
-  slotFiveOdds: {
-    "twoDiamond": 0.56,
-    "threeDiamond": 0.19810,
-    "fourDiamond": 0.06664,
-    "oneStar": 0.10288,
-    "twoStar": 0.02,
-    "threeStar": 0.00888,
-    "oneRainbow": 0.02857,
-    "twoRainbow": 0.01333,
-    "crown": 0.0016
+  constructor(
+    tag: string,
+    name: string,
+    cards: PokemonCard[],
+    packOdds: PackOdds,
+    subsets: string[],
+    rarities: RarityDefinition[],
+  ) {
+    this.tag = tag;
+    this.name = name;
+    this.cards = cards;
+    this.packOdds = packOdds;
+    this.subsets = subsets;
+    this.rarities = rarities;
   }
-}
-
-// Generate the rarity counts based on our cards
-export const calculateRarityCounts = (cards: PokemonCard[]): Record<string, number> => {
-  const counts: Record<string, number> = {};
   
-  // Initialize counts
-  RARITIES.forEach(rarity => {
-    counts[rarity.name] = 0;
-  });
+  // Get total number of cards
+  getTotalCards(): number {
+    return this.cards.length;
+  }
   
-  // Count cards by rarity
-  cards.forEach(card => {
-    if (counts[card.rarity] !== undefined) {
-      counts[card.rarity]++;
-    }
-  });
+  // Get cards by rarity
+  getCardsByRarity(rarity: string): PokemonCard[] {
+    return this.cards.filter(card => card.rarity === rarity);
+  }
   
-  return counts;
-}
+  // Get cards by subset
+  getCardsBySubset(subset: string): PokemonCard[] {
+    return this.cards.filter(card => card.subset === subset);
+  }
+  
+  // Get rarity counts
+  getRarityCounts(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    
+    this.rarities.forEach(rarity => {
+      counts[rarity.name] = 0;
+    });
+    
+    this.cards.forEach(card => {
+      if (counts[card.rarity] !== undefined) {
+        counts[card.rarity]++;
+      }
+    });
+    
+    return counts;
+  }
+  
+  // Get owned cards count
+  getOwnedCards(): PokemonCard[] {
+    return this.cards.filter(card => card.owned);
+  }
+  
+  // Get completion percentage
+  getCompletionPercentage(): number {
+    const totalCards = this.getTotalCards();
+    const ownedCards = this.getOwnedCards().length;
+    return totalCards > 0 ? (ownedCards / totalCards) * 100 : 0;
+  }
+  
+  // Create a new set with updated card ownership
+  updateCard(cardId: string, owned: boolean): void {
+    this.cards[parseInt(cardId.slice(-3)) - 1].owned = owned;
+  }
+  
+  updateCards(cardIds: string[], owned: boolean): void {
+    cardIds.forEach(cardId => {
+      this.cards[parseInt(cardId.slice(-3)) - 1].owned = owned;
+    });
+  }
 
-export const CELESTIAL_SET: PokemonCardSet = {
-  tag: "CELS",
-  cards: CELESTIAL_CARDS,
-  packOdds: SHINY_SET_ODDS,
-  rarityCount: calculateRarityCounts(CELESTIAL_CARDS),
-  subsets: ["SOLG", "LUNA"]
-}
+  // Reset all cards to unowned (mutates the set)
+  resetCollection(): void {
+    this.cards.forEach(card => {
+      card.owned = false;
+    });
+  }
 
-// Helper function to get color class based on rarity
-export const getRarityColorClass = (rarity: string): string => {
-  const rarityDef = RARITIES.find(r => r.name === rarity);
-  return rarityDef ? rarityDef.color : "bg-gray-200";
-};
+  setAllDiamondOwned(): void {
+    const thresholdIndex = this.rarities.findIndex(r => r.name === "fourDiamond");
+    this.cards.forEach(card => {
+      const cardRarityIndex = this.rarities.findIndex(r => r.name === card.rarity);
+      card.owned = cardRarityIndex <= thresholdIndex;
+    });
+  }
+
+  // Load ownership state from saved data
+  loadOwnershipState(savedCards: {id: string, owned: boolean}[]): void {
+    savedCards.forEach(savedCard => {
+      const card = this.cards.find(c => c.id === savedCard.id);
+      if (card) {
+        card.owned = savedCard.owned;
+      }
+    });
+  }
+
+  // Get card by ID
+  getCard(cardId: string): PokemonCard | undefined {
+    return this.cards.find(c => c.id === cardId);
+  }
+  
+  // Helper function to get color class based on rarity
+  getRarityColor(rarity: string): string {
+    const rarityDef = this.rarities.find(r => r.name === rarity);
+    return rarityDef ? rarityDef.color : "bg-gray-200";
+  };
+}

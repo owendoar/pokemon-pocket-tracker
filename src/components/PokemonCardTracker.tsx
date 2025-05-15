@@ -1,97 +1,123 @@
-"use client";
-
-import { useState, useEffect } from 'react';
-import { PokemonCard, CELESTIAL_SET, RARITIES } from './cardData';
-import { calculateStats } from './cardStats';
+"use client"
+import React, { useState, useEffect } from 'react';
+import { PokemonCard, PokemonCardSet } from './cardData';
+import SetRegistry from './setRegistry';
 import { firebaseService } from './firebaseService';
-import CollectionStatsComponent from './CollectionStats';
-import PackSimulator from './PackSimulator';
+import CollectionStats from './CollectionStats';
 import FilterControls from './FilterControls';
 import CardCollection from './CardCollection';
+import SetSelector from './SetSelector';
 
 export default function PokemonCardTracker(): JSX.Element {
-  const [cards, setCards] = useState<PokemonCard[]>([]);
+  // State variables
+  const [currentSetId, setCurrentSetId] = useState<string>('celestial');
+  const [currentSet, setCurrentSet] = useState<PokemonCardSet | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeSet, setActiveSet] = useState<string>('all');
   const [activeRarity, setActiveRarity] = useState<string>('all');
-  const [collectionStats, setCollectionStats] = useState(calculateStats(CELESTIAL_SET));
+  const [setOptions, setSetOptions] = useState<{id: string, name: string}[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Never');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  // Add a counter to force re-renders when set is mutated
+  const [updateCounter, setUpdateCounter] = useState<number>(0);
 
-  // Load cards from Firebase ONLY - no localStorage fallback
+  // Force a re-render without changing the set reference
+  const forceUpdate = () => setUpdateCounter(prev => prev + 1);
+
+  // Load available sets on mount
   useEffect(() => {
-    initializeCollection();
+    initializeApp();
   }, []);
 
-  const initializeCollection = async () => {
+  // Initialize the app - load sets and current selection
+  const initializeApp = async () => {
     try {
-      setLoading(true);
-      setErrorMessage('');
-      console.log('Initializing collection from Firebase...');
+      // Get available set options
+      const options = SetRegistry.getAvailableSetOptions();
+      setSetOptions(options);
       
-      // Always try to load from Firebase first
-      const savedCardStates = await firebaseService.loadCards();
+      // Load saved current set or default to first available
+      const savedSetId = localStorage.getItem('currentSet');
+      const initialSetId = savedSetId && options.find(opt => opt.id === savedSetId) 
+        ? savedSetId 
+        : options[0]?.id || 'celestial';
       
-      if (savedCardStates && savedCardStates.length > 0) {
-        console.log('Loading existing collection from Firebase');
-        // Merge saved states with base card data
-        const mergedCards = CELESTIAL_SET.cards.map(baseCard => {
-          const savedCard = savedCardStates.find(sc => sc.id === baseCard.id);
-          return {
-            ...baseCard,
-            owned: savedCard?.owned || false
-          };
-        });
+      await loadSet(initialSetId);
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+      setErrorMessage('Failed to initialize application');
+      setLoading(false);
+    }
+  };
+
+  // Load a specific set and its saved data
+  const loadSet = async (setId: string) => {
+    setLoading(true);
+    setErrorMessage('');
+    
+    try {
+      // Get the set definition
+      const set = SetRegistry.getSet(setId);
+      if (!set) {
+        throw new Error(`Set ${setId} not found`);
+      }
+      
+      setCurrentSetId(setId);
+      
+      console.log(`Loading collection for set ${setId} from Firebase...`);
+      
+      // Try to load saved progress from Firebase
+      const savedCards = await firebaseService.loadCardsForSet(setId);
+      
+      if (savedCards && savedCards.length > 0) {
+        console.log(`Loaded existing collection from Firebase for ${setId}`);
+        // Load the ownership state into the set
+        set.loadOwnershipState(savedCards);
         
-        setCards(mergedCards);
-        const stats = calculateStats({...CELESTIAL_SET, cards: mergedCards});
-        setCollectionStats(stats);
-        setLastSyncTime(new Date().toLocaleString());
+        // Get metadata for sync info
+        const metadata = await firebaseService.getSetMetadata(setId);
+        if (metadata) {
+          setLastSyncTime(new Date(metadata.lastUpdated).toLocaleString());
+        }
       } else {
-        console.log('No collection found in Firebase, creating new one');
-        // If no saved cards in Firebase, create a fresh collection
-        const freshCards = CELESTIAL_SET.cards.map(card => ({
-          ...card,
-          owned: false
-        }));
-        
-        setCards(freshCards);
-        const initialStats = calculateStats({...CELESTIAL_SET, cards: freshCards});
-        setCollectionStats(initialStats);
+        console.log(`No collection found in Firebase for ${setId}, creating new one`);
+        // Reset all cards to unowned (they should already be unowned from the registry)
+        set.resetCollection();
         
         // Save the fresh collection to Firebase immediately
-        const saveSuccess = await saveToFirebase(freshCards);
-        if (saveSuccess) {
-          console.log('New collection saved to Firebase');
+        const saveSuccess = await saveToFirebase(set);
+        if (!saveSuccess) {
+          setErrorMessage('Failed to save initial collection to Firebase');
         }
       }
-
-      // Remove any localStorage data to prevent confusion
-      localStorage.removeItem('pokemonCards');
       
-    } catch (err) {
-      console.error('Failed to initialize collection from Firebase:', err);
-      setErrorMessage(`Failed to load collection from Firebase: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setCurrentSet(set);
+      forceUpdate(); // Force initial render
       
-      // Don't fall back to default cards - let the user know there's an issue
-      setCards([]);
-      const emptyStats = calculateStats({...CELESTIAL_SET, cards: []});
-      setCollectionStats(emptyStats);
+      // Remove any old localStorage data for this set
+      localStorage.removeItem(`pokemonCards_${setId}`);
+      
+      // Save current set selection
+      localStorage.setItem('currentSet', setId);
+      
+    } catch (error) {
+      console.error(`Failed to load set ${setId}:`, error);
+      setErrorMessage(`Failed to load set ${setId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Save cards to Firebase
-  const saveToFirebase = async (cardsToSave: PokemonCard[]) => {
+  // Save collection to Firebase
+  const saveToFirebase = async (set: PokemonCardSet): Promise<boolean> => {
     setIsSyncing(true);
     setErrorMessage('');
     
     try {
-      console.log('Saving collection to Firebase...');
-      const success = await firebaseService.saveCards(cardsToSave);
+      console.log(`Saving collection for ${currentSetId} to Firebase...`);
+      const success = await firebaseService.saveCardsForSet(currentSetId, set);
       if (success) {
         setLastSyncTime(new Date().toLocaleString());
         console.log('Collection saved successfully');
@@ -109,86 +135,113 @@ export default function PokemonCardTracker(): JSX.Element {
     }
   };
 
+  // Handle set change
+  const handleSetChange = async (newSetId: string) => {
+    if (newSetId !== currentSetId) {
+      await loadSet(newSetId);
+    }
+  };
+
   // Toggle card owned status
   const toggleCard = async (id: string): Promise<void> => {
-    // Update local state immediately for responsiveness
-    const updatedCards = cards.map(card => 
-      card.id === id ? { ...card, owned: !card.owned } : card
-    );
-    const updatedSet = {...CELESTIAL_SET, cards: updatedCards};
-    setCards(updatedCards);
-    const updatedStats = calculateStats(updatedSet);
-    setCollectionStats(updatedStats);
-
+    if (!currentSet) return;
+    
+    // Get current card state
+    const card = currentSet.getCard(id);
+    if (!card) return;
+    
+    const oldOwnedState = card.owned;
+    
+    // Update the card immediately for responsiveness
+    currentSet.updateCard(id, !oldOwnedState);
+    
+    // Trigger re-render by incrementing counter
+    forceUpdate();
+    
     // Save to Firebase (with error handling)
-    const saveSuccess = await saveToFirebase(updatedCards);
+    const saveSuccess = await saveToFirebase(currentSet);
     if (!saveSuccess) {
       // If save failed, revert the local change
-      setCards(cards);
-      setCollectionStats(calculateStats({...CELESTIAL_SET, cards}));
+      currentSet.updateCard(id, oldOwnedState);
+      forceUpdate();
     }
   };
 
   // Reset collection (mark all as not owned)
   const resetCollection = async (): Promise<void> => {
+    if (!currentSet) return;
+    
     if (window.confirm('Are you sure you want to reset your collection? This will mark all cards as not owned.')) {
-      const resetCards = cards.map(card => ({ ...card, owned: false }));
-      setCards(resetCards);
-      const resetStats = calculateStats({...CELESTIAL_SET, cards: resetCards});
-      setCollectionStats(resetStats);
+      // Store current state for potential rollback
+      const previousState = currentSet.cards.map(card => ({ id: card.id, owned: card.owned }));
+      
+      currentSet.resetCollection();
+      forceUpdate();
       
       // Save to Firebase
-      await saveToFirebase(resetCards);
+      const saveSuccess = await saveToFirebase(currentSet);
+      if (!saveSuccess) {
+        // Rollback on failure
+        currentSet.loadOwnershipState(previousState);
+        forceUpdate();
+      }
     }
   };
 
   const setAllDiamondOwned = async (): Promise<void> => {
-    const thresholdIndex = RARITIES.findIndex(r => r.name === "fourDiamond");
-    if (window.confirm('Are you sure you want to mark diamond cards as owned?')) {
-      const setAllCards = cards.map(card => {
-        const cardRarityIndex = RARITIES.findIndex(r => r.name === card.rarity);
-        return {
-          ...card,
-          owned: cardRarityIndex <= thresholdIndex
-        };
-      });
+    if (!currentSet) return;
 
-      setCards(setAllCards);
-      const setStats = calculateStats({...CELESTIAL_SET, cards: setAllCards});
-      setCollectionStats(setStats);
+    if (window.confirm('Are you sure you want to mark diamond cards as owned?')) {
+      const previousState = currentSet.cards.map(card => ({ id: card.id, owned: card.owned }));
+
+      currentSet.setAllDiamondOwned();
+      forceUpdate();
       
       // Save to Firebase
-      await saveToFirebase(setAllCards);
+      const saveSuccess = await saveToFirebase(currentSet);
+      if (!saveSuccess) {
+        // Rollback on failure
+        currentSet.loadOwnershipState(previousState);
+        forceUpdate();
+      }
     }
   }
   
   // Add cards from pack to collection
   const addCardsToCollection = async (packCards: PokemonCard[]): Promise<void> => {
-    const updatedCards = cards.map(card => {
-      const packCard = packCards.find(pc => pc.id === card.id);
-      if (packCard) {
-        return { ...card, owned: true };
-      }
-      return card;
+    if (!currentSet) return;
+    
+    // Store current state for potential rollback
+    const cardIds = packCards.map(card => card.id);
+    const previousState = cardIds.map(id => {
+      const card = currentSet.getCard(id);
+      return { id, owned: card?.owned || false };
     });
     
-    setCards(updatedCards);
-    const updatedStats = calculateStats({...CELESTIAL_SET, cards: updatedCards});
-    setCollectionStats(updatedStats);
+    // Update all cards at once
+    const updatedCount = currentSet.updateCards(cardIds, true);
+    forceUpdate();
     
     // Save to Firebase
-    await saveToFirebase(updatedCards);
+    const saveSuccess = await saveToFirebase(currentSet);
+    if (!saveSuccess) {
+      // Rollback on failure
+      previousState.forEach(({ id, owned }) => {
+        currentSet.updateCard(id, owned);
+      });
+      forceUpdate();
+    }
   };
 
-  // Sync button for manual sync
+  // Manual sync - reload from Firebase
   const handleManualSync = async () => {
-    // Force reload from Firebase
-    await initializeCollection();
+    if (!currentSet) return;
+    await loadSet(currentSetId);
   };
 
-  // Retry loading from Firebase
+  // Retry loading when there's an error
   const retryLoad = async () => {
-    await initializeCollection();
+    await loadSet(currentSetId);
   };
   
   if (loading) {
@@ -205,7 +258,7 @@ export default function PokemonCardTracker(): JSX.Element {
     );
   }
   
-  if (cards.length === 0 && errorMessage) {
+  if (!currentSet && errorMessage) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 max-w-lg">
@@ -222,8 +275,12 @@ export default function PokemonCardTracker(): JSX.Element {
     );
   }
   
+  if (!currentSet) {
+    return <div className="flex justify-center py-12">No set loaded</div>;
+  }
+  
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto" key={updateCounter}>
       <h1 className="text-center mb-8">Pokémon Card Collection Tracker</h1>
       
       {/* Error Message */}
@@ -239,34 +296,19 @@ export default function PokemonCardTracker(): JSX.Element {
         </div>
       )}
       
-      {/* Sync Status */}
-      <div className="bg-blue-50 p-3 rounded-lg mb-4 flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          <span>Last synced: {lastSyncTime}</span>
-          {isSyncing && <span className="ml-2 text-blue-600">Syncing...</span>}
-          {firebaseService.isUserSignedIn() ? (
-            <span className="ml-2 text-green-600">✓ Connected to Firebase</span>
-          ) : (
-            <span className="ml-2 text-orange-600">⚠ Not connected to Firebase</span>
-          )}
-        </div>
-        <button 
-          onClick={handleManualSync}
-          disabled={isSyncing}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-        >
-          {isSyncing ? 'Syncing...' : 'Reload from Firebase'}
-        </button>
-      </div>
+      {/* Set Selector with Firebase Integration */}
+      <SetSelector
+        currentSetId={currentSetId}
+        setOptions={setOptions}
+        onSetChange={handleSetChange}
+        isSyncing={isSyncing}
+        lastSyncTime={lastSyncTime}
+        onManualSync={handleManualSync}
+        isConnected={firebaseService.isUserSignedIn()}
+      />
       
       {/* Collection Statistics */}
-      <CollectionStatsComponent stats={collectionStats} />
-      
-      {/* Pack Simulator */}
-      <PackSimulator 
-        cards={cards} 
-        onAddToCollection={addCardsToCollection}
-      />
+      <CollectionStats set={currentSet} />
       
       {/* Filters */}
       <FilterControls
@@ -276,18 +318,21 @@ export default function PokemonCardTracker(): JSX.Element {
         setActiveSet={setActiveSet}
         activeRarity={activeRarity}
         setActiveRarity={setActiveRarity}
-        cards={cards}
+        cards={currentSet.cards}
         onResetCollection={resetCollection}
         onSetAllDiamondOwned={setAllDiamondOwned}
+        availableSubsets={['all', ...currentSet.subsets]}
+        availableRarities={['all', ...currentSet.rarities.map(r => r.name)]}
       />
       
       {/* Card Collection */}
       <CardCollection
-        cards={cards}
+        cards={currentSet.cards}
         searchTerm={searchTerm}
         activeSet={activeSet}
         activeRarity={activeRarity}
         onToggleCard={toggleCard}
+        set={currentSet}
       />
     </div>
   );
