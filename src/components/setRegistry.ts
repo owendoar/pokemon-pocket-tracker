@@ -1,7 +1,12 @@
 // Set Registry - Simple registry for managing multiple sets
-import { PokemonCardSet, PokemonCard, PackOdds } from './cardData';
+import { PokemonCardSet, PokemonCard } from './cardData';
 import A3 from './data/celestial.json';
 import A2b from './data/shining.json';
+import A2a from './data/triumphant.json';
+import A2 from './data/spacetime.json';
+import A1a from './data/mythical.json';
+import A1 from './data/genetic.json';
+
 
 // Helper function to create cards from JSON data
 function createCardsFromData(setData: any): PokemonCard[] {
@@ -14,7 +19,7 @@ function createCardsFromData(setData: any): PokemonCard[] {
         id: `${setData.tag}${(index + 1).toString().padStart(3, '0')}`,
         name: pokemon.name,
         set: setData.name,
-        subset: pokemon.set,
+        subset: pokemon.subset,
         rarity: pokemon.rarity,
         owned: false
       });
@@ -103,6 +108,10 @@ export class SetRegistry {
 // Initialize with the existing set data
 SetRegistry.registerSet('A3', A3);
 SetRegistry.registerSet('A2b', A2b);
+SetRegistry.registerSet('A2a', A2a);
+SetRegistry.registerSet('A2', A2);
+SetRegistry.registerSet('A1a', A1a);
+SetRegistry.registerSet('A1', A1);
 
 // Export for convenience
 export default SetRegistry;

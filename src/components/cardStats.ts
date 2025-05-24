@@ -30,15 +30,18 @@ export const calculateStats = (cardSet: PokemonCardSet): CardSetStats => {
   let newCardOddsLuna = 50; // Default fallback
   
   // If the set has SOLG and LUNA subsets, calculate odds for each
-  if (cardSet.subsets.includes('SOLG')) {
-    newCardOddsSolg = calculateNewCardOdds(cardSet, 'SOLG');
+  if (cardSet.subsets.includes('Solgaleo')) {
+    newCardOddsSolg = calculateNewCardOdds(cardSet, 'Solgaleo');
   }
-  if (cardSet.subsets.includes('LUNA')) {
-    newCardOddsLuna = calculateNewCardOdds(cardSet, 'LUNA');
+  if (cardSet.subsets.includes('Lunala')) {
+    newCardOddsLuna = calculateNewCardOdds(cardSet, 'Lunala');
   }
-  
+
+  console.log(newCardOddsLuna);
+  console.log(newCardOddsSolg);
+
   // If no specific subsets, calculate general odds
-  if (!cardSet.subsets.includes('SOLG') && !cardSet.subsets.includes('LUNA')) {
+  if (!cardSet.subsets.includes('Solgaleo') && !cardSet.subsets.includes('Lunala')) {
     const overallOdds = calculateNewCardOdds(cardSet);
     newCardOddsSolg = overallOdds;
     newCardOddsLuna = overallOdds;
@@ -102,7 +105,7 @@ export const calculateNewCardOdds = (cardSet: PokemonCardSet, subset?: string): 
   
   // Count cards by rarity, optionally filtering by subset
   cardArray.forEach(card => {
-    if (cardsByRarity[card.rarity] && (!subset || card.subset === subset || card.subset === cardSet.tag)) {
+    if (cardsByRarity[card.rarity] && (!subset || card.subset === subset || card.subset === cardSet.name)) {
       cardsByRarity[card.rarity].total += 1;
       if (card.owned) {
         cardsByRarity[card.rarity].owned += 1;

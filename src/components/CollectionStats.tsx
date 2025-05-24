@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { PokemonCardSet } from './cardData';
-import { calculateStats } from './cardStats';
+import { calculateStats, calculateNewCardOdds } from './cardStats';
 
 interface CollectionStatsProps {
   set: PokemonCardSet;
@@ -36,19 +36,36 @@ const CollectionStats: React.FC<CollectionStatsProps> = ({ set }) => {
         </div>
       </div>
       
-      {/* Pack Odds */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-label">Pack Odds SOLG</div>
-          <div className="stat-value text-blue-600">{stats.newCardOddsSolg}%</div>
-          <div className="text-xs text-gray-600 mt-1">Chance of new card per pack</div>
+      {/* Pack Odds - Dynamic based on subsets */}
+      {set.subsets.length > 0 ? (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">New Card Odds by Pack</h3>
+          <div className={`grid grid-cols-1 ${set.subsets.length === 1 ? 'max-w-xs mx-auto' : set.subsets.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 mb-6`}>
+            {set.subsets.map(subset => {
+              const subsetOdds = Math.round(calculateNewCardOdds(set, subset) * 100) / 100;
+              
+              return (
+                <div key={subset} className="stat-card">
+                  <div className="stat-label">{subset} Packs</div>
+                  <div className="stat-value text-blue-600">{subsetOdds}%</div>
+                  <div className="text-xs text-gray-600 mt-1">Chance of new card per pack</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">Pack Odds LUNA</div>
-          <div className="stat-value text-blue-600">{stats.newCardOddsLuna}%</div>
-          <div className="text-xs text-gray-600 mt-1">Chance of new card per pack</div>
+      ) : (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">New Card Odds</h3>
+          <div className="grid grid-cols-1 max-w-xs mx-auto gap-4 mb-6">
+            <div className="stat-card">
+              <div className="stat-label">Pack Odds</div>
+              <div className="stat-value text-blue-600">{Math.round(calculateNewCardOdds(set) * 100) / 100}%</div>
+              <div className="text-xs text-gray-600 mt-1">Chance of new card per pack</div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Subset Stats */}
       {set.subsets.length > 1 && (

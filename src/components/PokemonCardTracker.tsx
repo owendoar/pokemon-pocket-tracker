@@ -10,7 +10,7 @@ import SetSelector from './SetSelector';
 
 export default function PokemonCardTracker(): JSX.Element {
   // State variables
-  const [currentSetId, setCurrentSetId] = useState<string>('celestial');
+  const [currentSetId, setCurrentSetId] = useState<string>('A3');
   const [currentSet, setCurrentSet] = useState<PokemonCardSet | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -42,7 +42,7 @@ export default function PokemonCardTracker(): JSX.Element {
       const savedSetId = localStorage.getItem('currentSet');
       const initialSetId = savedSetId && options.find(opt => opt.id === savedSetId) 
         ? savedSetId 
-        : options[0]?.id || 'celestial';
+        : options[0]?.id;
       
       await loadSet(initialSetId);
     } catch (error) {

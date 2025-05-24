@@ -26,7 +26,7 @@ export const calculateNewCardOdds = (cardSet: PokemonCardSet, subSet: String): n
   
   cardArray.forEach(card => {
     
-    if (cardsByRarity[card.rarity] && (card.subset == subSet || card.subset == cardSet.tag)) {
+    if (cardsByRarity[card.rarity] && (card.subset == subSet || card.subset == cardSet.name)) {
       cardsByRarity[card.rarity].total += 1;
       if (card.owned) {
         cardsByRarity[card.rarity].owned += 1;
@@ -41,6 +41,9 @@ export const calculateNewCardOdds = (cardSet: PokemonCardSet, subSet: String): n
   // Calculate odds for slot 4 (uncommon or better, but weighted toward uncommon)
   const slot4Odds = calculateNewSlotOdds(cardsByRarity, packOdds.slotFourOdds);
   const slot5Odds = calculateNewSlotOdds(cardsByRarity, packOdds.slotFiveOdds);
+
+  console.log(slot4Odds);
+  console.log(slot5Odds);
   
   // Probability of getting at least one new card
   // 1 - probability of getting all owned cards

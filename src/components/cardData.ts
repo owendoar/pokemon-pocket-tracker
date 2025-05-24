@@ -106,7 +106,7 @@ export class PokemonCardSet {
   }
 
   setAllDiamondOwned(): void {
-    const thresholdIndex = this.rarities.findIndex(r => r.name === "fourDiamond");
+    const thresholdIndex = this.rarities.findIndex(r => r.name === "oneStar");
     this.cards.forEach(card => {
       const cardRarityIndex = this.rarities.findIndex(r => r.name === card.rarity);
       card.owned = cardRarityIndex <= thresholdIndex;
